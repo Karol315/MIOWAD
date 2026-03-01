@@ -1,2 +1,1 @@
-# MIOWAD
-na potrzeby przedmiotu 
+# Metody Inteligencji Obliczeniowej w Analizie Danych
