@@ -1,0 +1,2 @@
+# MIOWAD
+na potrzeby przedmiotu 
