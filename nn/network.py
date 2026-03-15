@@ -1,34 +1,105 @@
 import numpy as np
 from .layer import Layer
+from .activation_functions import *
 
-class SimpleNetwork():
-    def __init__(self,
-                 input_size: int,
-                 hidden_layers_sizes: list,
-                 output_size: int = 1):
 
-        self.input_size = input_size
-        self.hidden_layers_sizes = hidden_layers_sizes
-        self.output_size = output_size
+class SimpleNetwork:
+    def __init__(self, input_size,
+                 output_size,
+                 hidden_layers_count=None,
+                 hidden_layers_sizes=None,
+                 activation_func=sigmoid,
+                 activation_deriv=sigmoid_deriv,
+                 init_method="uniform"):
+        self.layers = []
 
-        self.hidden_layers = []
-        prev_size = input_size
+        final_sizes = []
+        if hidden_layers_count is not None and hidden_layers_sizes is not None:
+            if hidden_layers_count != len(hidden_layers_sizes):
+                raise ValueError("The number of hidden layers must equal the number of hidden layers sizes.")
+            final_sizes = hidden_layers_sizes
+        elif hidden_layers_sizes is not None:
+            final_sizes = hidden_layers_sizes
+        elif hidden_layers_count is not None:
+            final_sizes = [5] * hidden_layers_count
 
-        for size in hidden_layers_sizes:
-            layer = Layer(n_neurons=size, input_size=prev_size)
-            self.hidden_layers.append(layer)
-            prev_size = size
+        current_input = input_size
+        for n_neurons in final_sizes:
+            self.layers.append(Layer(current_input, n_neurons, activation_func, activation_deriv, init_method))
+            current_input = n_neurons
+        self.layers.append(Layer(current_input, output_size, linear, linear_deriv, init_method))
 
-        self.output_layer = Layer(n_neurons=output_size, input_size=prev_size)
+    def predict(self, inputs: np.ndarray) -> np.ndarray:
+        current_output = np.asarray(inputs)
+        for layer in self.layers:
+            current_output = layer.forward(current_output)
+        return current_output
 
-    def predict(self, inputs):
-        current_inputs = np.asarray(inputs)
+    def fit(self, X, y, epochs, learning_rate, batch_size=None):
 
-        for layer in self.hidden_layers:
-            current_inputs = layer.forward(current_inputs)
+        n_samples = X.shape[0]
+        if batch_size is None:
+            batch_size = n_samples
 
-        output = self.output_layer.forward(current_inputs)
-        return output
+        for epoch in range(epochs):
+            # Przetasowanie danych
+            indices = np.arange(n_samples)
+            np.random.shuffle(indices)
+            X_shuffled = X[indices]
+            y_shuffled = y[indices]
 
-    def __str__(self):
-        return f"SimpleNetwork(input_size={self.input_size}, hidden_layers_sizes={self.hidden_layers_sizes})"
+            for i in range(0, n_samples, batch_size):
+                X_batch = X_shuffled[i:i + batch_size]
+                y_batch = y_shuffled[i:i + batch_size]
+
+                # Forward pass
+                output = self.predict(X_batch)
+
+                # Backward pass
+                d_output = 2 * (output - y_batch) / len(X_batch)
+
+                for layer in reversed(self.layers):
+                    d_output = layer.backward(d_output, learning_rate)
+
+    def fit_with_history(self, X, y, epochs, learning_rate, batch_size=None):
+        """
+        Wersja do analizy - uczy sieć i zapamiętuje wartości wag wszystkich warstw w każdej epoce.
+        """
+        n_samples = X.shape[0]
+        if batch_size is None:
+            batch_size = n_samples
+
+        history = {
+            'loss': [],
+            'weights': {i: [] for i in range(len(self.layers))}
+        }
+
+        for epoch in range(epochs):
+            # Przetasowanie danych
+            indices = np.arange(n_samples)
+            np.random.shuffle(indices)
+            X_shuffled = X[indices]
+            y_shuffled = y[indices]
+
+            epoch_loss = 0
+
+            for i in range(0, n_samples, batch_size):
+                X_batch = X_shuffled[i:i + batch_size]
+                y_batch = y_shuffled[i:i + batch_size]
+
+                # Forward pass
+                output = self.predict(X_batch)
+                loss = np.mean((y_batch - output) ** 2)
+                epoch_loss += loss * len(X_batch)
+
+                # Backward pass
+                d_output = 2 * (output - y_batch) / len(X_batch)
+                for layer in reversed(self.layers):
+                    d_output = layer.backward(d_output, learning_rate)
+
+
+            history['loss'].append(epoch_loss / n_samples)
+            for idx, layer in enumerate(self.layers):
+                history['weights'][idx].append(layer.weights.copy())
+
+        return history

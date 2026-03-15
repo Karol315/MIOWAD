@@ -1,40 +1,36 @@
 import numpy as np
-from .neuron import Neuron
 
-class Layer():
-    def __init__(self,
-                 n_neurons: int,
-                 input_size: int):
 
+class Layer:
+    def __init__(self, input_size, n_neurons, activation_func, activation_deriv, init_method="uniform"):
+        self.input_size = input_size
         self.n_neurons = n_neurons
-        self.neurons = [Neuron(input_size=input_size) for _ in range(n_neurons)]
+        self.activation_func = activation_func
+        self.activation_deriv = activation_deriv
+        if init_method == "uniform":
+            self.weights = np.random.uniform(0, 1, (input_size, n_neurons))
+        elif init_method == "he":
+            self.weights = np.random.randn(input_size, n_neurons) * np.sqrt(2.0 / input_size)
+        elif init_method == "xavier":
+            self.weights = np.random.randn(input_size, n_neurons) * np.sqrt(1.0 / input_size)
+        else:
+            raise ValueError("Nieznana metoda inicjalizacji")
+        self.biases = np.zeros((1, n_neurons))
+        self.last_input = None
+        self.output = None
 
     def forward(self, inputs):
-        self.outputs = np.array([neuron.forward(inputs) for neuron in self.neurons])
-        return self.outputs
+        self.last_input = inputs
+        z = (inputs @ self.weights) + self.biases
+        self.output = self.activation_func(z)
+        return self.output
 
-    def set_neuron_weights(self, neuron_index, weights):
-        self.neurons[neuron_index].set_weights(weights)
-    def set_neuron_bias(self, neuron_index, bias):
-        self.neurons[neuron_index].set_bias(bias)
+    def backward(self, d_output, learning_rate):
+        delta = d_output * self.activation_deriv(self.output)
+        d_weights = self.last_input.T @ delta
+        d_biases = np.sum(delta, axis=0, keepdims=True)
+        d_input = delta @ self.weights.T
+        self.weights -= learning_rate * d_weights
+        self.biases -= learning_rate * d_biases
 
-    def set_weights(self, weights_list : list[np.ndarray]):
-        for neuron_index in range(len(self.neurons)):
-            self.set_neuron_weights(neuron_index, weights_list[neuron_index])
-    def set_bias(self, bias_list):
-        for neuron_index in range(len(self.neurons)):
-            self.set_neuron_bias(neuron_index, bias_list[neuron_index])
-
-    def get_weights(self):
-        weights = []
-        for neuron in self.neurons:
-            weights.append(neuron.weights)
-        return weights
-    def get_bias(self):
-        bias = []
-        for neuron in self.neurons:
-            bias.append(neuron.bias)
-        return bias
-
-    def __str__(self):
-        return f"Layer(n_neurons={self.n_neurons}, neurons = {str(self.neurons)}"
+        return d_input
