@@ -10,7 +10,9 @@ class SimpleNetwork:
                  hidden_layers_sizes=None,
                  activation_func=sigmoid,
                  activation_deriv=sigmoid_deriv,
-                 init_method="uniform"):
+                 init_method="uniform",
+                 random_state=None
+                 ):
         self.layers = []
 
         final_sizes = []
@@ -25,9 +27,9 @@ class SimpleNetwork:
 
         current_input = input_size
         for n_neurons in final_sizes:
-            self.layers.append(Layer(current_input, n_neurons, activation_func, activation_deriv, init_method))
+            self.layers.append(Layer(current_input, n_neurons, activation_func, activation_deriv, init_method, random_state))
             current_input = n_neurons
-        self.layers.append(Layer(current_input, output_size, linear, linear_deriv, init_method))
+        self.layers.append(Layer(current_input, output_size, linear, linear_deriv, init_method, random_state))
 
     def predict(self, inputs: np.ndarray) -> np.ndarray:
         current_output = np.asarray(inputs)
@@ -42,7 +44,6 @@ class SimpleNetwork:
             batch_size = n_samples
 
         for epoch in range(epochs):
-            # Przetasowanie danych
             indices = np.arange(n_samples)
             np.random.shuffle(indices)
             X_shuffled = X[indices]
@@ -52,10 +53,10 @@ class SimpleNetwork:
                 X_batch = X_shuffled[i:i + batch_size]
                 y_batch = y_shuffled[i:i + batch_size]
 
-                # Forward pass
+                # Forward
                 output = self.predict(X_batch)
 
-                # Backward pass
+                # Backward
                 d_output = 2 * (output - y_batch) / len(X_batch)
 
                 for layer in reversed(self.layers):
@@ -63,7 +64,7 @@ class SimpleNetwork:
 
     def fit_with_history(self, X, y, epochs, learning_rate, batch_size=None):
         """
-        Wersja do analizy - uczy sieć i zapamiętuje wartości wag wszystkich warstw w każdej epoce.
+        Wersja do analizy, fit z zapamiętaniem wartości wag wszystkich warstw w każdej epoce.
         """
         n_samples = X.shape[0]
         if batch_size is None:
@@ -75,7 +76,6 @@ class SimpleNetwork:
         }
 
         for epoch in range(epochs):
-            # Przetasowanie danych
             indices = np.arange(n_samples)
             np.random.shuffle(indices)
             X_shuffled = X[indices]
@@ -87,12 +87,12 @@ class SimpleNetwork:
                 X_batch = X_shuffled[i:i + batch_size]
                 y_batch = y_shuffled[i:i + batch_size]
 
-                # Forward pass
+                # Forward
                 output = self.predict(X_batch)
                 loss = np.mean((y_batch - output) ** 2)
                 epoch_loss += loss * len(X_batch)
 
-                # Backward pass
+                # Backward
                 d_output = 2 * (output - y_batch) / len(X_batch)
                 for layer in reversed(self.layers):
                     d_output = layer.backward(d_output, learning_rate)

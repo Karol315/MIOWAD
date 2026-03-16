@@ -2,11 +2,24 @@ import numpy as np
 
 
 class Layer:
-    def __init__(self, input_size, n_neurons, activation_func, activation_deriv, init_method="uniform"):
+    def __init__(self,
+                 input_size,
+                 n_neurons,
+                 activation_func,
+                 activation_deriv,
+                 init_method="uniform",
+                 random_state=42
+                 ):
+
         self.input_size = input_size
         self.n_neurons = n_neurons
         self.activation_func = activation_func
         self.activation_deriv = activation_deriv
+        self.biases = np.ones((1, n_neurons))
+        self.last_input = None
+        self.output = None
+
+        np.random.seed(random_state)
         if init_method == "uniform":
             self.weights = np.random.uniform(0, 1, (input_size, n_neurons))
         elif init_method == "he":
@@ -15,9 +28,7 @@ class Layer:
             self.weights = np.random.randn(input_size, n_neurons) * np.sqrt(1.0 / input_size)
         else:
             raise ValueError("Nieznana metoda inicjalizacji")
-        self.biases = np.zeros((1, n_neurons))
-        self.last_input = None
-        self.output = None
+
 
     def forward(self, inputs):
         self.last_input = inputs
